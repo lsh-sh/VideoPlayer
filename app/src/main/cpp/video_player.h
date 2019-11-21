@@ -7,9 +7,10 @@
 
 #include "ffmpeg/include/libavformat/avformat.h"
 #include "ffmpeg/include/libavcodec/avcodec.h"
+#include "ffmpeg/include/libswscale/swscale.h"
 #include <stdlib.h>
 #include "common.h"
 AVFormatContext* formatContext;
 void init();
-int open(const char* videoPath);
+int open(const char* videoPath, const char* outPath);
 #endif //NDKAPPLICATION_VIDEO_PLAYER_H
