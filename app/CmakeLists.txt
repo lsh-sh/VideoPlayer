@@ -2,13 +2,17 @@ cmake_minimum_required(VERSION 3.4.1)
 
 set_directory_properties(src/main/cpp/ffmpeg/include)
 add_library( # Specifies the name of the library.
-        videoplayer-lib
+        audioplayer
 
         # Sets the library as a shared library.
         SHARED
 
         # Provides a relative path to your source file(s).
-        src/main/cpp/video_player.c
+        src/main/cpp/jni_player.cpp
+        src/main/cpp/CallJava.cpp
+        src/main/cpp/AudioPlayer.cpp
+        src/main/cpp/Audio.cpp
+        src/main/cpp/PacketQueue.cpp
         )
 
 find_library( # Defines the name of the path variable that stores the
@@ -19,103 +23,103 @@ find_library( # Defines the name of the path variable that stores the
         log)
 
 add_library(
-        avcodec
+        avcodec-57
         SHARED
         IMPORTED
 )
 set_target_properties(
-        avcodec
+        avcodec-57
         PROPERTIES IMPORTED_LOCATION
-        ${CMAKE_SOURCE_DIR}/src/main/cpp/ffmpeg/lib/libavcodec-57.so
+        ${CMAKE_SOURCE_DIR}/src/main/jniLibs/armeabi-v7a/libavcodec-57.so
 )
 
 add_library(
-        avdevice
+        avdevice-57
         SHARED
         IMPORTED
 )
 set_target_properties(
-        avdevice
+        avdevice-57
         PROPERTIES IMPORTED_LOCATION
-        ${CMAKE_SOURCE_DIR}/src/main/cpp/ffmpeg/lib/libavdevice-57.so
+        ${CMAKE_SOURCE_DIR}/src/main/jniLibs/armeabi-v7a/libavdevice-57.so
 )
 
 add_library(
-        avfilter
+        avfilter-6
         SHARED
         IMPORTED
 )
 set_target_properties(
-        avfilter
+        avfilter-6
         PROPERTIES IMPORTED_LOCATION
-        ${CMAKE_SOURCE_DIR}/src/main/cpp/ffmpeg/lib/libavfilter-6.so
+        ${CMAKE_SOURCE_DIR}/src/main/jniLibs/armeabi-v7a/libavfilter-6.so
 )
 
 add_library(
-        avformat
+        avformat-57
         SHARED
         IMPORTED
 )
 set_target_properties(
-        avformat
+        avformat-57
         PROPERTIES IMPORTED_LOCATION
-        ${CMAKE_SOURCE_DIR}/src/main/cpp/ffmpeg/lib/libavformat-57.so
+        ${CMAKE_SOURCE_DIR}/src/main/jniLibs/armeabi-v7a/libavformat-57.so
 )
 
 add_library(
-        avutil
+        avutil-55
         SHARED
         IMPORTED
 )
 set_target_properties(
-        avutil
+        avutil-55
         PROPERTIES IMPORTED_LOCATION
-        ${CMAKE_SOURCE_DIR}/src/main/cpp/ffmpeg/lib/libavutil-55.so
+        ${CMAKE_SOURCE_DIR}/src/main/jniLibs/armeabi-v7a/libavutil-55.so
 )
 
 add_library(
-        postproc
+        postproc-54
         SHARED
         IMPORTED
 )
 set_target_properties(
-        postproc
+        postproc-54
         PROPERTIES IMPORTED_LOCATION
-        ${CMAKE_SOURCE_DIR}/src/main/cpp/ffmpeg/lib/libpostproc-54.so
+        ${CMAKE_SOURCE_DIR}/src/main/jniLibs/armeabi-v7a/libpostproc-54.so
 )
 
 add_library(
-        swresample
+        swresample-2
         SHARED
         IMPORTED
 )
 set_target_properties(
-        swresample
+        swresample-2
         PROPERTIES IMPORTED_LOCATION
-        ${CMAKE_SOURCE_DIR}/src/main/cpp/ffmpeg/lib/libswresample-2.so
+        ${CMAKE_SOURCE_DIR}/src/main/jniLibs/armeabi-v7a/libswresample-2.so
 )
 
 add_library(
-        swscale
+        swscale-4
         SHARED
         IMPORTED
 )
 set_target_properties(
-        swscale
+        swscale-4
         PROPERTIES IMPORTED_LOCATION
-        ${CMAKE_SOURCE_DIR}/src/main/cpp/ffmpeg/lib/libswscale-4.so
+        ${CMAKE_SOURCE_DIR}/src/main/jniLibs/armeabi-v7a/libswscale-4.so
 )
 
 
 target_link_libraries( # Specifies the target library.
-        videoplayer-lib
-        avcodec
-        swscale
-        swresample
-        postproc
-        avutil
-        avformat
-        avfilter
-        avdevice
+        audioplayer
+        avcodec-57
+        swscale-4
+        swresample-2
+        postproc-54
+        avutil-55
+        avformat-57
+        avfilter-6
+        avdevice-57
         # Links the log library to the target library.
         ${log-lib})
