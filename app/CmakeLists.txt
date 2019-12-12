@@ -13,6 +13,7 @@ add_library( # Specifies the name of the library.
         src/main/cpp/AudioPlayer.cpp
         src/main/cpp/Audio.cpp
         src/main/cpp/PacketQueue.cpp
+        src/main/cpp/PlayerStatus.cpp
         )
 
 find_library( # Defines the name of the path variable that stores the
@@ -121,5 +122,6 @@ target_link_libraries( # Specifies the target library.
         avformat-57
         avfilter-6
         avdevice-57
+        OpenSLES
         # Links the log library to the target library.
         ${log-lib})

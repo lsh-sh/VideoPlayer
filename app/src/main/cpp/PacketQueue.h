@@ -11,16 +11,19 @@ extern "C"{
 #include "AndroidLog.h"
 #include <queue>
 #include <pthread.h>
+#include "PlayerStatus.h"
 class PacketQueue {
 public:
     std::queue<AVPacket*> queuePacket;
     pthread_mutex_t mutexPacket;
     pthread_cond_t condPacket;
+    PlayerStatus* playerStatus = NULL;
 public:
-    PacketQueue();
+    PacketQueue(PlayerStatus* playerStatus);
     ~PacketQueue();
     int putPacket(AVPacket* packet);
     int getPacket(AVPacket* packet);
+    int getSize();
 };
 
 

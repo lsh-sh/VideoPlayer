@@ -13,12 +13,17 @@ class CallJava {
 private:
     JavaVM *mJvm;
     JNIEnv* mEnv;
-    jobject  mObject;
-    jmethodID methodId;
+    jobject onParparedObject;
+    jmethodID jmidOnParpared;
+    jobject onLoadObject;
+    jmethodID jmidOnLoad;
 public:
-    CallJava(JavaVM *jvm,JNIEnv* env,jobject obj);
+    CallJava(JavaVM *jvm,JNIEnv* env);
     ~CallJava();
     void onParpared(int threadType);
+    void setOnParparedObject(jobject obj);
+    void onLoad(int threadType,bool load);
+    void setOnLoadObject(jobject obj);
 };
 
 

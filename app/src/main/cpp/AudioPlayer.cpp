@@ -22,14 +22,16 @@ void *initFFmpeg(void *data) {
         return 0;
     }
 
+    int streamIndex = av_find_best_stream(audioPlayer->formatContext, AVMEDIA_TYPE_AUDIO, -1, -1,
+                                          NULL, 0);
+    AVCodecParameters *codecpar = audioPlayer->formatContext->streams[streamIndex]->codecpar;
     Audio *audio = audioPlayer->audio;
     if (audio == NULL) {
-        audio = new Audio();
+        audio = new Audio(audioPlayer->playerStatus, codecpar->sample_rate, audioPlayer->callJava);
         audioPlayer->audio = audio;
     }
-    audio->streamIndex = av_find_best_stream(audioPlayer->formatContext, AVMEDIA_TYPE_AUDIO, -1, -1,
-                                             NULL, 0);
-    audio->codecpar = audioPlayer->formatContext->streams[audio->streamIndex]->codecpar;
+    audio->streamIndex = streamIndex;
+    audio->codecpar = codecpar;
 
     AVCodec *codec = avcodec_find_decoder(audio->codecpar->codec_id);
     if (!codec) {
@@ -63,18 +65,25 @@ void *decodeFFmpeg(void *data) {
         LOGE("audio is null");
         return 0;
     }
-    int count = 0;
-    AVPacket *packet = av_packet_alloc();
-    while (av_read_frame(audioPlayer->formatContext, packet) >= 0) {
-        if (packet->stream_index == audio->streamIndex) {
-            count++;
-            LOGI("解码第 %d 帧", count);
+    audio->play();
+    while (audioPlayer->playerStatus != NULL && !audioPlayer->playerStatus->exit) {
+        AVPacket *packet = av_packet_alloc();
+        if (av_read_frame(audioPlayer->formatContext, packet) >= 0) {
+            audio->queue->putPacket(packet);
+        } else {
+            av_packet_unref(packet);
+            av_free(packet);
+            while (audioPlayer->playerStatus != NULL && !audioPlayer->playerStatus->exit) {
+                if (audio->queue->getSize() > 0) {
+                    continue;
+                } else {
+                    audio->playerStatus->exit = true;
+                    break;
+                }
+            }
         }
-        av_packet_unref(packet);
     }
-    av_free(packet);
-    packet = NULL;
-
+    LOGI("解码完成");
     pthread_exit(&audioPlayer->decodeThread);
 }
 
@@ -88,7 +97,8 @@ AudioPlayer::~AudioPlayer() {
     }
 }
 
-AudioPlayer::AudioPlayer(CallJava *callJava, const char *url) {
+AudioPlayer::AudioPlayer(CallJava *callJava, const char *url, PlayerStatus *playerStatus) {
+    this->playerStatus = playerStatus;
     this->callJava = callJava;
     this->url = new char[strlen(url)];
     strcpy(this->url, url);
@@ -96,4 +106,16 @@ AudioPlayer::AudioPlayer(CallJava *callJava, const char *url) {
 
 void AudioPlayer::start() {
     pthread_create(&decodeThread, NULL, decodeFFmpeg, this);
+}
+
+void AudioPlayer::pause() {
+    if (audio != NULL) {
+        audio->pause();
+    }
+}
+
+void AudioPlayer::resume() {
+    if (audio != NULL) {
+        audio->resume();
+    }
 }
