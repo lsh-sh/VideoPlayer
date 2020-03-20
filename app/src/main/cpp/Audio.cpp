@@ -4,29 +4,25 @@
 
 #include "Audio.h"
 
-Audio::Audio(PlayerStatus *playerStatus, int sampleRate, CallJava *callJava) {
+Audio::Audio(PlayerStatus *playerStatus, int sampleRate) {
     this->playerStatus = playerStatus;
     this->queue = new PacketQueue(playerStatus);
     this->avPacket = av_packet_alloc();
     this->avFrame = av_frame_alloc();
-    this->sampleRate = sampleRate;
-    this->callJava = callJava;
     this->outBuffer = (uint8_t *) av_malloc(sampleRate * 2 * 2);
 }
 
 Audio::~Audio() {
-    if (this->queue != NULL) {
-        delete this->queue;
+    if (avPacket != NULL) {
+        av_packet_free(&avPacket);
+        av_free(avPacket);
+        avPacket = NULL;
     }
-    if (this->avPacket != NULL) {
-        av_free(this->avPacket);
-        this->avPacket = NULL;
+    if (avFrame != NULL) {
+        av_frame_free(&avFrame);
+        av_free(avFrame);
+        avFrame = NULL;
     }
-    if (this->avFrame != NULL) {
-        av_free(this->avFrame);
-        this->avFrame = NULL;
-    }
-
 }
 
 int Audio::resampleAudio() {
@@ -34,16 +30,21 @@ int Audio::resampleAudio() {
     int dataSize = 0;
     while (playerStatus != NULL && !playerStatus->exit) {
 
+        if (playerStatus->seek) {
+            av_usleep(1000 * 100);
+            continue;
+        }
+
         if (queue->getSize() == 0) {
             if (!playerStatus->load) {
                 playerStatus->load = true;
-                callJava->onLoad(CHILD_THREAD, true);
+                playerStatus->playerListner->postEvent(EVNET_LOAD_STAT);
             }
             continue;
         } else {
             if (playerStatus->load) {
                 playerStatus->load = false;
-                callJava->onLoad(CHILD_THREAD, false);
+                playerStatus->playerListner->postEvent(EVNET_LOAD_END);
             }
         }
 
@@ -91,6 +92,15 @@ int Audio::resampleAudio() {
 
         int outChannels = av_get_channel_layout_nb_channels(AV_CH_LAYOUT_STEREO);
         dataSize = nb * outChannels * av_get_bytes_per_sample(AV_SAMPLE_FMT_S16);
+
+        nowTime = avFrame->pts * av_q2d(timeBase);
+
+        if (nowTime < clock) {
+            //校验防止avFrame->pts为0
+            nowTime = clock;
+        }
+        clock = nowTime;
+
         av_packet_unref(avPacket);
         av_frame_unref(avFrame);
         break;
@@ -99,7 +109,7 @@ int Audio::resampleAudio() {
     return dataSize;
 }
 
-void *decodPlay(void *data) {
+void *Audio::decodPlay(void *data) {
     Audio *audio = (Audio *) data;
 
     audio->initOpenSLES();
@@ -108,7 +118,7 @@ void *decodPlay(void *data) {
 }
 
 void Audio::play() {
-    pthread_create(&threadPlay, NULL, decodPlay, this);
+    pthread_create(&threadPlay, NULL, Audio::decodPlay, this);
 }
 
 //音频数据的回调
@@ -117,9 +127,16 @@ void playerCallback(SLAndroidSimpleBufferQueueItf bq, void *context) {
     if (audio != NULL) {
         int buffersize = audio->resampleAudio();
         if (buffersize > 0) {
+            audio->clock += buffersize / ((double) (audio->sampleRate * 2 * 2));
             (*audio->playerBufferQueue)->Enqueue(audio->playerBufferQueue,
                                                  (uint8_t *) audio->outBuffer,
                                                  buffersize);
+
+            if (audio->clock - audio->lastClock >= 1.0) {
+                audio->lastClock = audio->clock;
+                audio->playerStatus->playerListner->postEvent(EVNET_UPDATE_TIME, audio->duration,
+                                                              audio->clock);
+            }
         }
     }
 }
@@ -179,11 +196,11 @@ void Audio::initOpenSLES() {
     SLDataLocator_OutputMix outputMix = {SL_DATALOCATOR_OUTPUTMIX, outputMixObject};
     SLDataSink dataSink = {&outputMix, NULL};
 
-    const SLInterfaceID playIds[1] = {SL_IID_BUFFERQUEUE};
-    const SLboolean palyReq[1] = {SL_BOOLEAN_TRUE};
+    const SLInterfaceID playIds[2] = {SL_IID_BUFFERQUEUE,SL_IID_PLAYBACKRATE};
+    const SLboolean palyReq[2] = {SL_BOOLEAN_TRUE,SL_BOOLEAN_TRUE};
 
     result = (*engineEngine)->CreateAudioPlayer(engineEngine, &playerObject, &dataSource, &dataSink,
-                                                1, playIds, palyReq);
+                                                2, playIds, palyReq);
     assert(SL_RESULT_SUCCESS == result);
     (void) result;
     // 初始化播放器
@@ -275,6 +292,49 @@ void Audio::resume() {
     if (playerPlay != NULL) {
         (*playerPlay)->SetPlayState(playerPlay, SL_PLAYSTATE_PLAYING);
     }
+}
+
+void Audio::stop() {
+    if (playerPlay != NULL) {
+        (*playerPlay)->SetPlayState(playerPlay, SL_PLAYSTATE_STOPPED);
+    }
+}
+
+void Audio::release() {
+    stop();
+    if (playerObject != NULL) {
+        (*playerObject)->Destroy(playerObject);
+        playerObject = NULL;
+        playerPlay = NULL;
+        playerBufferQueue = NULL;
+    }
+    if (outputMixObject != NULL) {
+        (*outputMixObject)->Destroy(outputMixObject);
+        outputMixObject = NULL;
+        outputMixEnvironmentalReverb = NULL;
+    }
+    if (engineObject != NULL) {
+        (*engineObject)->Destroy(engineObject);
+        engineObject = NULL;
+        engineEngine = NULL;
+    }
+    if (queue != NULL) {
+        delete queue;
+        queue = NULL;
+    }
+    if (outBuffer != NULL) {
+        av_free(outBuffer);
+        outBuffer = NULL;
+    }
+    if (codecpar != NULL) {
+        avcodec_parameters_free(&codecpar);
+        codecpar = NULL;
+    }
+    if (codecContext != NULL) {
+        avcodec_free_context(&codecContext);
+        codecContext = NULL;
+    }
+    playerStatus = NULL;
 }
 
 

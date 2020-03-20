@@ -11,6 +11,7 @@ PacketQueue::PacketQueue(PlayerStatus *playerStatus) {
 }
 
 PacketQueue::~PacketQueue() {
+    clearPacketQueue();
     pthread_mutex_destroy(&mutexPacket);
     pthread_cond_destroy(&condPacket);
 }
@@ -51,4 +52,19 @@ int PacketQueue::getSize() {
     count = queuePacket.size();
     pthread_mutex_unlock(&mutexPacket);
     return count;
+}
+
+void PacketQueue::clearPacketQueue() {
+    //先解除线程锁
+    pthread_cond_signal(&condPacket);
+    //在加锁
+    pthread_mutex_lock(&mutexPacket);
+    while (!queuePacket.empty()) {
+        AVPacket *packet = queuePacket.front();
+        queuePacket.pop();
+        av_packet_unref(packet);
+        av_free(packet);
+        packet = NULL;
+    }
+    pthread_mutex_unlock(&mutexPacket);
 }

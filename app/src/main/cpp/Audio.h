@@ -7,11 +7,11 @@
 extern "C" {
 #include "include/libavcodec/avcodec.h"
 #include "include/libswresample/swresample.h"
+#include "include/libavutil/time.h"
 };
 
 #include "PlayerStatus.h"
 #include "PacketQueue.h"
-#include "CallJava.h"
 #include <SLES/OpenSLES.h>
 #include <SLES/OpenSLES_Android.h>
 
@@ -27,7 +27,11 @@ public:
     uint8_t *outBuffer = NULL;
     pthread_t threadPlay;
     int sampleRate = 44100;
-    CallJava *callJava = NULL;
+    int duration = 0;
+    double nowTime = 0;
+    double clock = 0;
+    double lastClock = 0;
+    AVRational timeBase;
 
     // 引擎接口
     SLObjectItf engineObject = NULL;
@@ -42,11 +46,13 @@ public:
     //缓冲器队列接口
     SLAndroidSimpleBufferQueueItf playerBufferQueue;
 public:
-    Audio(PlayerStatus *playerStatus, int sampleRate,CallJava *callJava);
+    Audio(PlayerStatus *playerStatus, int sampleRate);
 
     ~Audio();
 
     void play();
+
+    static void *decodPlay(void *);
 
     int resampleAudio();
 
@@ -57,6 +63,10 @@ public:
     void pause();
 
     void resume();
+
+    void stop();
+
+    void release();
 };
 
 

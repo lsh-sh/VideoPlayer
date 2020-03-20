@@ -9,11 +9,10 @@ add_library( # Specifies the name of the library.
 
         # Provides a relative path to your source file(s).
         src/main/cpp/jni_player.cpp
-        src/main/cpp/CallJava.cpp
-        src/main/cpp/AudioPlayer.cpp
+        src/main/cpp/MediaPlayer.cpp
         src/main/cpp/Audio.cpp
+        src/main/cpp/Video.cpp
         src/main/cpp/PacketQueue.cpp
-        src/main/cpp/PlayerStatus.cpp
         )
 
 find_library( # Defines the name of the path variable that stores the
