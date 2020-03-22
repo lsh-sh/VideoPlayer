@@ -6,6 +6,7 @@
 #define VIDEOPLAYER_VIDEO_H
 extern "C" {
 #include "include/libavcodec/avcodec.h"
+#include "include/libavutil/time.h"
 };
 
 #include "PlayerStatus.h"

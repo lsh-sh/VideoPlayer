@@ -64,7 +64,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void begin(View view) {
-        audioPlayer.setSource("http://mpge.5nd.com/2015/2015-11-26/69708/1.mp3");
+        audioPlayer.setSource("/storage/emulated/0/哪吒之魔童降世.mp4");
         audioPlayer.parpared();
     }
 

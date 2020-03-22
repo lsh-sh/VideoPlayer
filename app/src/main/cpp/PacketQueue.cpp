@@ -26,24 +26,22 @@ int PacketQueue::putPacket(AVPacket *packet) {
 }
 
 int PacketQueue::getPacket(AVPacket *packet) {
+    int resCode = 0;
     pthread_mutex_lock(&mutexPacket);
-    if (queuePacket.size() > 0) {
-        while (playerStatus != NULL && !playerStatus->exit) {
-            AVPacket *avPacket = queuePacket.front();
-            if (av_packet_ref(packet, avPacket) == 0) {
-                queuePacket.pop();
-            }
-
-//            LOGI("从队列里取出一个AVPacket，还剩%d个", queuePacket.size());
+    if (queuePacket.size() > 0 && playerStatus != NULL && !playerStatus->exit) {
+        AVPacket *avPacket = queuePacket.front();
+        if (av_packet_ref(packet, avPacket) >= 0) {
+            queuePacket.pop();
             av_packet_unref(avPacket);
             av_free(avPacket);
-            break;
+        } else {
+            resCode = -1;
         }
     } else {
         pthread_cond_wait(&condPacket, &mutexPacket);
     }
     pthread_mutex_unlock(&mutexPacket);
-    return 0;
+    return resCode;
 }
 
 int PacketQueue::getSize() {

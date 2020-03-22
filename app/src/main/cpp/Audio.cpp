@@ -13,6 +13,11 @@ Audio::Audio(PlayerStatus *playerStatus, int sampleRate) {
 }
 
 Audio::~Audio() {
+    if (queue != NULL) {
+        delete (queue);
+        queue = NULL;
+    }
+
     if (avPacket != NULL) {
         av_packet_free(&avPacket);
         av_free(avPacket);
@@ -36,29 +41,27 @@ int Audio::resampleAudio() {
         }
 
         if (queue->getSize() == 0) {
-            if (!playerStatus->load) {
-                playerStatus->load = true;
-                playerStatus->playerListner->postEvent(EVNET_LOAD_STAT);
-            }
-            continue;
-        } else {
-            if (playerStatus->load) {
-                playerStatus->load = false;
-                playerStatus->playerListner->postEvent(EVNET_LOAD_END);
-            }
+            playerStatus->load = true;
+            playerStatus->playerListner->postEvent(EVNET_LOAD_STAT);
         }
 
         if (queue->getPacket(avPacket) != 0) {
             av_packet_unref(avPacket);
             continue;
         }
-        int result = avcodec_send_packet(codecContext, avPacket);
-        if (result != 0) {
+
+        if (playerStatus->load) {
+            playerStatus->load = false;
+            playerStatus->playerListner->postEvent(EVNET_LOAD_END);
+        }
+
+        int resCode = avcodec_send_packet(codecContext, avPacket);
+        if (resCode != 0) {
             av_packet_unref(avPacket);
             continue;
         }
-        result = avcodec_receive_frame(codecContext, avFrame);
-        if (result != 0) {
+        resCode = avcodec_receive_frame(codecContext, avFrame);
+        if (resCode != 0) {
             av_packet_unref(avPacket);
             av_frame_unref(avFrame);
             continue;
@@ -196,8 +199,8 @@ void Audio::initOpenSLES() {
     SLDataLocator_OutputMix outputMix = {SL_DATALOCATOR_OUTPUTMIX, outputMixObject};
     SLDataSink dataSink = {&outputMix, NULL};
 
-    const SLInterfaceID playIds[2] = {SL_IID_BUFFERQUEUE,SL_IID_PLAYBACKRATE};
-    const SLboolean palyReq[2] = {SL_BOOLEAN_TRUE,SL_BOOLEAN_TRUE};
+    const SLInterfaceID playIds[2] = {SL_IID_BUFFERQUEUE, SL_IID_PLAYBACKRATE};
+    const SLboolean palyReq[2] = {SL_BOOLEAN_TRUE, SL_BOOLEAN_TRUE};
 
     result = (*engineEngine)->CreateAudioPlayer(engineEngine, &playerObject, &dataSource, &dataSink,
                                                 2, playIds, palyReq);
@@ -331,6 +334,7 @@ void Audio::release() {
         codecpar = NULL;
     }
     if (codecContext != NULL) {
+        avcodec_close(codecContext);
         avcodec_free_context(&codecContext);
         codecContext = NULL;
     }
